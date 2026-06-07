@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Rule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  fileType    String   @default("excel")
+  ruleConfig  Json
+  aiGenerated Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id               String   @id @default(cuid())
+  externalCode     String?
+  storeName        String?
+  recipientName    String?
+  recipientPhone   String?
+  recipientAddress String?
+  skuCode          String
+  skuName          String
+  skuQuantity      Int
+  skuSpec          String?
+  remark           String?
+  batchId          String?
+  createdAt        DateTime @default(now())
+
+  @@index([externalCode])
+  @@index([recipientName])
+  @@index([createdAt])
+  @@index([batchId])
+}
