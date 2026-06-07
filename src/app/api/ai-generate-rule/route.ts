@@ -121,10 +121,19 @@ ${fileContent}`
 
     if (!response.ok) {
       const errorText = await response.text()
+      // 余额不足特殊处理
+      if (response.status === 402 || errorText.includes('Insufficient Balance')) {
+        return NextResponse.json({ 
+          success: true, 
+          data: generateFallbackRule(fileName, fileType),
+          aiGenerated: false,
+          message: 'AI API余额不足，已生成基础规则模板。请在DeepSeek平台充值后重试，或手动编辑规则。'
+        })
+      }
       return NextResponse.json({ 
         success: false, 
-        error: `AI API调用失败: ${response.status} ${errorText}` 
-      }, { status: 500 })
+        error: `AI服务暂时不可用(${response.status})，请稍后重试或手动配置规则` 
+      }, { status: 502 })
     }
 
     const result = await response.json()
