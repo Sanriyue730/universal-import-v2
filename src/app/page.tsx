@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { FileUpload } from '@/components/import/FileUpload'
 import { RuleSelector } from '@/components/import/RuleSelector'
 import { PreviewTable } from '@/components/import/PreviewTable'
-import { parseExcelBuffer, parseWordBuffer, getPreviewRows } from '@/lib/file-parser'
+import { parseExcelBuffer, getPreviewRows } from '@/lib/file-parser'
 import { RuleEngine } from '@/lib/rule-engine'
-import { ParseRule, OrderRecord, PreviewRow } from '@/types'
+import { ParseRule, PreviewRow } from '@/types'
 import { toast } from 'sonner'
 import { Loader2, Sparkles, Play, Download, Send } from 'lucide-react'
 import type { RawSheet } from '@/lib/file-parser'
@@ -45,20 +45,22 @@ export default function HomePage() {
     setProgress(10)
 
     try {
-      const buffer = await f.arrayBuffer()
       let parsed: RawSheet[]
+      const isExcel = f.name.endsWith('.xlsx') || f.name.endsWith('.xls')
 
-      if (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')) {
+      if (isExcel) {
+        // Excel 前端直接解析（快速）
+        const buffer = await f.arrayBuffer()
         parsed = parseExcelBuffer(buffer)
-      } else if (f.name.endsWith('.docx')) {
-        parsed = await parseWordBuffer(buffer)
-      } else if (f.name.endsWith('.pdf')) {
-        // PDF在前端用text提取
-        parsed = await parsePdfBuffer(buffer)
       } else {
-        toast.error('不支持的文件格式')
-        setIsProcessing(false)
-        return
+        // PDF / Word 走服务端API解析
+        setProgress(30)
+        const formData = new FormData()
+        formData.append('file', f)
+        const res = await fetch('/api/parse-file', { method: 'POST', body: formData })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error)
+        parsed = data.data
       }
 
       setSheets(parsed)
@@ -70,39 +72,6 @@ export default function HomePage() {
     } finally {
       setIsProcessing(false)
     }
-  }
-
-  // PDF解析
-  async function parsePdfBuffer(buffer: ArrayBuffer): Promise<RawSheet[]> {
-    const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
-    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
-    const rows: (string | null)[][] = []
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i)
-      const content = await page.getTextContent()
-      let lastY: number | null = null
-      let currentLine: string[] = []
-
-      for (const item of content.items) {
-        if ('str' in item) {
-          const y = Math.round((item as { transform: number[] }).transform[5])
-          if (lastY !== null && Math.abs(y - lastY) > 5) {
-            rows.push([currentLine.join(' ')])
-            currentLine = []
-          }
-          currentLine.push(item.str)
-          lastY = y
-        }
-      }
-      if (currentLine.length > 0) {
-        rows.push([currentLine.join(' ')])
-      }
-      rows.push(['--- PAGE BREAK ---'])
-    }
-
-    return [{ name: 'pdf', rows }]
   }
 
   // AI生成规则
