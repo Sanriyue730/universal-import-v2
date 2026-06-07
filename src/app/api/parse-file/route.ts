@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
-export const config = {
-  api: { bodyParser: false },
-}
+export const maxDuration = 30
 
 export async function POST(request: NextRequest) {
   try {
