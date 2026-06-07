@@ -34,7 +34,27 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/rules')
       const data = await res.json()
-      if (data.success) setRules(data.data)
+      if (data.success) {
+        setRules(data.data)
+        // 如果没有规则，自动加载预设
+        if (data.data.length === 0) {
+          await loadPresetRules()
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function loadPresetRules() {
+    try {
+      const res = await fetch('/api/preset-rules', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(`已加载 ${data.data.created} 条预设规则`)
+        // 重新获取规则列表
+        const res2 = await fetch('/api/rules')
+        const data2 = await res2.json()
+        if (data2.success) setRules(data2.data)
+      }
     } catch { /* ignore */ }
   }
 
