@@ -8,7 +8,7 @@ import { parseExcelBuffer, getPreviewRows } from '@/lib/file-parser'
 import { RuleEngine } from '@/lib/rule-engine'
 import { ParseRule, PreviewRow } from '@/types'
 import { toast } from 'sonner'
-import { Loader2, Sparkles, Play, Download, Send } from 'lucide-react'
+import { Loader2, Sparkles, Play, Download, Send, Settings } from 'lucide-react'
 import type { RawSheet } from '@/lib/file-parser'
 
 type Step = 'upload' | 'select-rule' | 'preview'
@@ -24,6 +24,9 @@ export default function HomePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [aiGenerating, setAiGenerating] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [apiKey, setApiKey] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('ai_api_key') || '' : '')
+  const [apiBaseUrl, setApiBaseUrl] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('ai_base_url') || '' : '')
 
   // 加载规则列表
   useEffect(() => {
@@ -111,6 +114,8 @@ export default function HomePage() {
           fileContent: preview,
           fileName: file?.name,
           fileType,
+          apiKey: apiKey || undefined,
+          baseUrl: apiBaseUrl || undefined,
         }),
       })
 
@@ -298,8 +303,16 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">导入下单</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">上传文件，选择或AI生成解析规则，智能批量下单</p>
         </div>
-        {step === 'preview' && (
-          <div className="flex gap-3">
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text-muted)] hover:bg-gray-50 transition-colors"
+            title="AI 设置"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          {step === 'preview' && (
+            <>
             <button
               onClick={handleExport}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-gray-50 transition-colors"
@@ -314,8 +327,9 @@ export default function HomePage() {
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               提交下单
             </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* 进度条 */}
@@ -390,6 +404,36 @@ export default function HomePage() {
             </h2>
           </div>
           <PreviewTable data={previewData} onChange={setPreviewData} />
+        </div>
+      )}
+
+      {/* AI 设置面板 */}
+      {showSettings && (
+        <div className="bg-white rounded-xl border border-[var(--border)] p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-[var(--text-primary)] mb-4">AI 模型配置</h2>
+          <p className="text-xs text-[var(--text-muted)] mb-4">配置大模型 API，用于智能生成解析规则。支持 DeepSeek、OpenAI 等兼容 OpenAI 格式的 API。</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">API Key</label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => { setApiKey(e.target.value); localStorage.setItem('ai_api_key', e.target.value) }}
+                placeholder="sk-..."
+                className="w-full px-3 py-2 text-sm border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">API Base URL（可选）</label>
+              <input
+                value={apiBaseUrl}
+                onChange={(e) => { setApiBaseUrl(e.target.value); localStorage.setItem('ai_base_url', e.target.value) }}
+                placeholder="https://api.deepseek.com"
+                className="w-full px-3 py-2 text-sm border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-[var(--text-muted)] mt-3">Key 仅存储在浏览器本地，不会上传到服务器。默认使用 DeepSeek API。</p>
         </div>
       )}
     </div>

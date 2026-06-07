@@ -75,13 +75,16 @@ const SYSTEM_PROMPT = `你是一个文件结构分析专家。用户会给你一
 
 export async function POST(request: NextRequest) {
   try {
-    const { fileContent, fileName, fileType } = await request.json()
+    const { fileContent, fileName, fileType, apiKey, baseUrl } = await request.json()
 
     if (!fileContent) {
       return NextResponse.json({ success: false, error: '文件内容不能为空' }, { status: 400 })
     }
 
-    if (!DEEPSEEK_API_KEY) {
+    const effectiveKey = apiKey || DEEPSEEK_API_KEY
+    const effectiveUrl = baseUrl || DEEPSEEK_BASE_URL
+
+    if (!effectiveKey) {
       // Fallback: 返回一个基础规则模板让用户手动配置
       return NextResponse.json({
         success: true,
@@ -99,11 +102,11 @@ export async function POST(request: NextRequest) {
 文件内容（前若干行）：
 ${fileContent}`
 
-    const response = await fetch(`${DEEPSEEK_BASE_URL}/v1/chat/completions`, {
+    const response = await fetch(`${effectiveUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${effectiveKey}`,
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
